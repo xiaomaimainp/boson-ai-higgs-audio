@@ -1,0 +1,291 @@
+openapi: 3.0.3
+info:
+  title: Higgs Audio API
+  description: Higgs Audio 文本转语音服务API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5000
+    description: 本地开发服务器
+  - url: http://your-server-ip:5000
+    description: 远程服务器
+
+paths:
+  /health:
+    get:
+      summary: 健康检查
+      description: 检查服务是否正常运行
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+        '500':
+          description: 服务异常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /generate:
+    post:
+      summary: 异步音频生成（支持文件上传）
+      description: |
+        根据文本生成音频文件，返回文件下载链接。
+        支持两种方式提供参考音频：
+        1. 通过 ref_audio 参数提供服务器上的文件路径
+        2. 通过 multipart/form-data 上传音频文件
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/GenerateRequest'
+                ref_audio:
+                  type: string
+                  format: binary
+                  description: 参考音频文件（用于语音克隆）
+      responses:
+        '200':
+          description: 音频生成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /generate_sync:
+    post:
+      summary: 同步音频生成（支持文件上传）
+      description: |
+        根据文本生成音频文件，直接返回音频文件。
+        支持两种方式提供参考音频：
+        1. 通过 ref_audio 参数提供服务器上的文件路径
+        2. 通过 multipart/form-data 上传音频文件
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/GenerateRequest'
+                ref_audio:
+                  type: string
+                  format: binary
+                  description: 参考音频文件（用于语音克隆）
+      responses:
+        '200':
+          description: 音频生成成功，直接返回音频文件
+          content:
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /upload_ref_audio:
+    post:
+      summary: 上传参考音频文件
+      description: 专门用于上传参考音频文件的接口
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                ref_audio:
+                  type: string
+                  format: binary
+                  description: 参考音频文件
+              required:
+                - ref_audio
+      responses:
+        '200':
+          description: 音频文件上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /audio/{filename}:
+    get:
+      summary: 获取音频文件
+      description: 根据文件名下载生成的音频文件
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 音频文件名
+      responses:
+        '200':
+          description: 成功返回音频文件
+          content:
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: 文件不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        timestamp:
+          type: string
+          example: "2023-01-01T00:00:00Z"
+
+    GenerateRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: 要转换为音频的文本内容
+          example: "你好，欢迎使用 Higgs Audio 服务！"
+        temperature:
+          type: number
+          format: float
+          description: 温度参数，控制生成的随机性 (0.1-2.0)
+          minimum: 0.1
+          maximum: 2.0
+          default: 1.0
+          example: 1.0
+        top_p:
+          type: number
+          format: float
+          description: Top-p参数，控制词汇选择范围 (0.1-1.0)
+          minimum: 0.1
+          maximum: 1.0
+          default: 0.95
+          example: 0.95
+        max_new_tokens:
+          type: integer
+          description: 最大token数，控制音频长度 (128-4096)
+          minimum: 128
+          maximum: 4096
+          default: 1024
+          example: 1024
+        ref_audio:
+          type: string
+          description: |
+            参考音频文件路径，用于语音克隆。
+            可以是服务器上的文件路径，或者通过文件上传提供。
+          example: "/path/to/reference/audio.wav"
+          nullable: true
+        scene_prompt:
+          type: string
+          description: 场景提示文件路径
+          example: "/path/to/scene/prompt.txt"
+          nullable: true
+
+    GenerateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: 音频生成成功
+        file_id:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        filename:
+          type: string
+          example: "audio_550e8400-e29b-41d4-a716-446655440000.wav"
+        download_url:
+          type: string
+          example: "/audio/audio_550e8400-e29b-41d4-a716-446655440000.wav"
+
+    UploadResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: 参考音频上传成功
+        file_id:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        filename:
+          type: string
+          example: "uploaded_ref_550e8400-e29b-41d4-a716-446655440000.wav"
+        file_path:
+          type: string
+          example: "/data/huangshiang/boson-ai-higgs-audio/temp/uploaded_ref_550e8400-e29b-41d4-a716-446655440000.wav"
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: 错误信息描述
