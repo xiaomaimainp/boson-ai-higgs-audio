@@ -253,12 +253,14 @@ def generate_audio():
                 print(f"⚠️ 清理临时文件失败: {e}")
         
         if success:
+            # 构造完整的URL而不是相对路径
+            host = request.host_url.rstrip('/')
             return jsonify({
                 "status": "success",
                 "message": "音频生成成功",
                 "file_id": file_id,
                 "filename": output_filename,
-                "download_url": f"/audio/{output_filename}"
+                "download_url": f"{host}/audio/{output_filename}"
             })
         else:
             return jsonify({
