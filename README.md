@@ -1,7 +1,7 @@
 # Higgs Audio 简化生成工具
 
 这是一个超简化的 Higgs Audio 生成工具，去除了复杂的配置文件，只需要简单配置路径就能使用。
-
+需要结合Higgs Audio下载模型后运行
 ## 特点
 
 - ✅ 自动检测模型和tokenizer路径
